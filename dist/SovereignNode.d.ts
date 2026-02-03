@@ -1,20 +1,20 @@
-import { PoEBeacon } from './discovery/GossipNode';
+import { PoEBeaconProto } from './discovery/GossipNode';
 export interface SovereignNodeConfig {
     solanaRpcUrl?: string;
     solanaPrivateKey?: string;
     baseRpcUrl?: string;
     basePrivateKey?: string;
     agentId: string;
-    veracityScore?: number;
+    beaconRateLimitMs?: number;
 }
 /**
- * SovereignNode - The primary entry point for a PDP-compliant agent node.
+ * SovereignNode V2 - Hardened PDP agent node with cryptographic identity.
  *
- * Logic:
- * 1. Execute task (external)
- * 2. Generate ZK Proof of execution
- * 3. Anchor proof commitment to Solana
- * 4. Broadcast PoE beacon to P2P network
+ * Improvements over V1:
+ * - Ed25519 keypair for beacon signing
+ * - Nonce-based replay protection
+ * - Mandatory on-chain anchor validation
+ * - Rate limiting for spam resistance
  */
 export declare class SovereignNode {
     private solana?;
@@ -22,17 +22,23 @@ export declare class SovereignNode {
     private zk;
     private p2p;
     private config;
+    private keyPair?;
+    private nonce;
+    private lastBroadcastTime;
     constructor(config: SovereignNodeConfig);
     bootstrap(): Promise<void>;
     /**
      * Primary flow: Anchors and Broadcasts a new Proof of Execution.
      */
-    testify(taskId: string, outputData: string, capabilities: string[]): Promise<PoEBeacon>;
+    testify(taskId: string, outputData: string, capabilities: string[]): Promise<PoEBeaconProto>;
     /**
-     * Gated Interaction: Verify an external peer's proof before proceeding.
-     * This is the "Boring Infrastructure" Grok mentioned.
+     * MANDATORY Peer Verification: Verify an external peer's proof before proceeding.
+     * Returns false if:
+     * - No blockchain anchor exists
+     * - ZK proof reference is missing
      */
-    verifyPeer(beacon: PoEBeacon): Promise<boolean>;
-    onPeerDiscovered(callback: (peer: PoEBeacon) => void): void;
+    verifyPeer(beacon: PoEBeaconProto): Promise<boolean>;
+    onPeerDiscovered(callback: (peer: PoEBeaconProto) => void): void;
     shutdown(): Promise<void>;
+    getPublicKey(): Uint8Array | undefined;
 }

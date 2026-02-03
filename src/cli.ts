@@ -1,4 +1,5 @@
 import { SovereignNode } from './SovereignNode';
+import { PoEBeaconProto } from './discovery/GossipNode';
 import * as dotenv from 'dotenv';
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -6,12 +7,12 @@ import bs58 from 'bs58';
 dotenv.config();
 
 /**
- * PDP CLI Prototype - For the Solana / Hacker Pitch
+ * PDP CLI Prototype V2 - Hardened for Solana / Hacker Pitch
  */
 async function main() {
     console.log(`
     =========================================
-      PDP SOVEREIGN NODE — PROTOTYPE V2
+      PDP SOVEREIGN NODE — HARDENED V2
     =========================================
     `);
 
@@ -27,7 +28,7 @@ async function main() {
         solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
         solanaPrivateKey: priKey,
         agentId: process.env.AGENT_ID || `rebel-agent-${Math.floor(Math.random() * 1000)}`,
-        veracityScore: 0.85
+        beaconRateLimitMs: 5000 // 5 seconds for demo (normally 5 minutes)
     });
 
     try {
@@ -36,11 +37,13 @@ async function main() {
         console.log('\n🚀 Peer-to-Peer network active.');
         console.log('📡 Listening for discovery beacons...');
 
-        node.onPeerDiscovered((peer) => {
-            console.log(`\n🔔 DISCOVERED PEER: ${peer.agentId}`);
-            console.log(`   └─ PoE Hash: ${peer.poeHash.substring(0, 20)}...`);
-            console.log(`   └─ Solana Tx: ${peer.solanaTx}`);
-            console.log(`   └─ Veracity: ${peer.veracity}`);
+        node.onPeerDiscovered((peer: PoEBeaconProto) => {
+            const poeHashHex = Buffer.from(peer.poeHash).toString('hex');
+            console.log(`\n🔔 DISCOVERED PEER: ${peer.nodeId}`);
+            console.log(`   └─ PoE Hash: ${poeHashHex.substring(0, 20)}...`);
+            console.log(`   └─ Solana Tx: ${peer.solanaTx || 'N/A'}`);
+            console.log(`   └─ Base Tx: ${peer.baseTx || 'N/A'}`);
+            console.log(`   └─ Nonce: ${peer.nonce}`);
         });
 
         // Simulate a "Work and Testify" loop for the demo
@@ -57,7 +60,7 @@ async function main() {
             console.log('✅ Proof broadcasted and anchored.');
             console.log(`🔗 Explorer: ${beacon.solanaTx ? `https://explorer.solana.com/tx/${beacon.solanaTx}?cluster=devnet` : 'N/A'}`);
 
-            await new Promise(r => setTimeout(r, 5000));
+            await new Promise(r => setTimeout(r, 6000)); // Wait past rate limit
         }
 
         console.log('\n✨ Demo cycle complete. Node will remain online for 60s.');

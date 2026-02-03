@@ -8,9 +8,10 @@ Expires: August 2026
 Abstract
 
    This document specifies an extension to AI Agent Discovery (AID)
-   protocols that enables proof-gated peer discovery. Agents broadcast
-   cryptographic hashes of verified execution artifacts (Proof of
-   Execution, PoE) via gossip protocols, enabling trust-first discovery
+   protocols that enables hardware-agnostic, proof-gated peer 
+   discovery. Agents broadcast Zero-Knowledge Proofs of Execution 
+   (ZK-PoE) and multi-chain settlement anchors (e.g., Solana, Base)
+   via P2P gossip protocols (libp2p), enabling trustless discovery
    without centralized registries.
 
 Status of This Memo
@@ -38,9 +39,10 @@ Table of Contents
    capabilities without verification.
 
    This extension introduces Proof of Execution (PoE) as a discovery
-   primitive. Agents prove their capabilities through cryptographically
-   signed execution artifacts, then broadcast proof hashes for peers to
-   discover and validate autonomously.
+   primitive. Agents prove their capabilities through ZK-SLA (Zero-
+   Knowledge Service Level Agreement) proofs, then anchor these 
+   proofs on distributed ledgers (Solana for frequency, Base for 
+   social trust), and broadcast the commitment via P2P gossip.
 
    Key benefits:
    - Trustless discovery: Peers verify proofs directly
@@ -67,6 +69,8 @@ Table of Contents
    Agents SHOULD broadcast PoE beacons at regular intervals (default:
    5 minutes) on designated gossip topics. Beacons contain:
    - PoE hash (SHA-256)
+   - ZK Proof Bundle (Groth16/PLONK)
+   - Blockchain Anchor (Solana Tx / Base Tx)
    - Capability list
    - Veracity score
    - Timestamp
@@ -130,10 +134,12 @@ Table of Contents
 
    7.1.  Proof Validation
    Agents MUST validate PoE hashes before trusting peer capabilities.
-   Validation MAY include:
-   - On-chain anchor verification
-   - Judge Agent protocol execution
-   - Peer attestation (multi-party verification)
+   Validation MUST include:
+   - ZK-SLA Verification: Verifying the Groth16 proof against signals.
+   - Multi-Chain Anchor Verification: Checking the settlement status 
+     on Solana or Base L2.
+   - Hardware Agnosticism: Ensuring the proof is valid regardless of
+     whether it originated in a TEE or a standard runtime.
 
    7.2.  Replay Protection
    Beacons MUST include timestamps. Receivers SHOULD reject beacons

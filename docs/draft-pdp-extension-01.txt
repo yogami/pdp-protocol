@@ -1,0 +1,284 @@
+Internet-Draft                                              Berlin AI Labs
+Intended status: Standards Track                             February 2026
+Expires: August 2026
+
+           Proof of Execution Extension for AI Agent Discovery
+                          draft-pdp-extension-01
+
+Abstract
+
+   This document specifies a hardware-agnostic extension to AI Agent
+   Discovery protocols that enables cryptographically verified, 
+   proof-gated peer discovery. Agents broadcast signed PoE beacons 
+   containing Ed25519 signatures, Protobuf-encoded payloads, and 
+   mandatory blockchain anchors (Solana/Base L2) via libp2p gossip.
+
+   This is NOT crypto-poetry. This is a spec.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Terminology
+   3.  Protocol Overview
+   4.  Canonical Encoding (Protobuf)
+   5.  Identity Model (Ed25519)
+   6.  Replay Protection
+   7.  PoE Beacon Format
+   8.  Blockchain Anchoring
+   9.  ZK Statement Definition
+   10. Security Considerations
+   11. IANA Considerations
+   12. References
+
+1.  Introduction
+
+   The Agent-to-Agent (A2A) protocol family enables AI agents to
+   discover and coordinate with each other. However, existing discovery
+   mechanisms rely on centralized registries or self-reported 
+   capabilities without verification—a "Trust Me" model.
+
+   After brutal audit by multiple LLMs (DeepSeek-R1, GPT-5.2), this
+   extension addresses their core criticisms:
+   - JSON serialization replaced with Protobuf
+   - Identity bound to Ed25519 keypairs with mandatory signatures
+   - Replay protection via monotonic nonces
+   - "Optional" on-chain validation removed—anchors are MANDATORY
+   - Concrete ZK statement defined (not hand-waving)
+
+   Author: Berlin AI Labs (contact@berlinailabs.de)
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119.
+
+   PoE: Proof of Execution - A cryptographic hash of verified task
+        artifacts demonstrating completed work.
+
+   Beacon: A signed, Protobuf-encoded broadcast for peer discovery.
+
+   Anchor: An on-chain transaction that immutably records the PoE hash.
+
+3.  Protocol Overview
+
+   3.1.  Beacon Broadcasting
+
+   Agents MUST broadcast signed PoE beacons at intervals >= 5 minutes
+   on the libp2p GossipSub topic: pdp/discovery/v2
+
+   Beacons MUST be Protobuf-encoded (see Section 4).
+   Beacons MUST be Ed25519-signed (see Section 5).
+   Beacons MUST contain at least one blockchain anchor (see Section 8).
+
+   3.2.  Peer Discovery
+
+   Receiving agents:
+   1. Decode Protobuf payload
+   2. Verify Ed25519 signature against peer_id
+   3. Check nonce > last_seen_nonce for this peer_id
+   4. Check timestamp within 24-hour window
+   5. Verify at least one blockchain anchor exists
+   6. (Optional) Fetch and verify ZK proof from zk_proof_ref
+
+4.  Canonical Encoding (Protobuf)
+
+   All beacons MUST use Protocol Buffers for serialization. This 
+   ensures canonical encoding and ~80% bandwidth savings over JSON.
+
+   4.1.  Schema Definition
+
+   syntax = "proto3";
+   package pdp;
+
+   message PoEBeacon {
+     string node_id = 1;           // Human-readable agent identifier
+     bytes peer_id = 2;            // Ed25519 public key (32 bytes)
+     bytes poe_hash = 3;           // SHA-256 of execution artifacts
+     bytes zk_proof_ref = 4;       // Content-addressed proof (IPFS CID)
+     string solana_tx = 5;         // Solana transaction signature
+     string base_tx = 6;           // Base L2 transaction hash
+     repeated string capabilities = 7;
+     uint64 timestamp = 8;         // Unix ms
+     uint64 nonce = 9;             // Monotonically increasing
+     bytes signature = 10;         // Ed25519 over fields 1-9
+   }
+
+   4.2.  Hash Computation
+
+   The poe_hash field MUST be computed as:
+     SHA-256(concatenation of task output artifacts)
+
+   Implementations MUST NOT use JSON or other non-deterministic 
+   encodings for hash computation.
+
+5.  Identity Model (Ed25519)
+
+   5.1.  Key Generation
+
+   Each agent MUST generate an Ed25519 keypair at bootstrap.
+   The public key (32 bytes) is used as the peer_id.
+
+   5.2.  Signature Generation
+
+   The signature field MUST be computed as:
+     Ed25519.sign(private_key, Protobuf.encode(beacon with signature=empty))
+
+   5.3.  Signature Verification
+
+   Receivers MUST verify:
+     Ed25519.verify(beacon.signature, Protobuf.encode(beacon with signature=empty), beacon.peer_id)
+
+   Beacons with invalid signatures MUST be dropped.
+
+6.  Replay Protection
+
+   6.1.  Nonce Requirements
+
+   Every beacon MUST contain a nonce field that:
+   - Is monotonically increasing per peer_id
+   - Starts at 1 for the first beacon
+   - Increments by at least 1 for each subsequent beacon
+
+   6.2.  Receiver Behavior
+
+   Receivers MUST track (peer_id -> last_nonce) mappings.
+   Beacons with nonce <= last_nonce MUST be dropped.
+
+   6.3.  Timestamp Requirements
+
+   Beacons MUST contain a timestamp (Unix milliseconds).
+   Receivers SHOULD reject beacons where (now - timestamp) > 24 hours.
+
+7.  PoE Beacon Format
+
+   See Section 4.1 for the Protobuf schema.
+
+   Field requirements:
+   - node_id: REQUIRED. Human-readable identifier.
+   - peer_id: REQUIRED. Ed25519 public key.
+   - poe_hash: REQUIRED. SHA-256 of proof artifacts.
+   - zk_proof_ref: REQUIRED. Content-addressed proof reference.
+   - solana_tx OR base_tx: At least one REQUIRED.
+   - capabilities: RECOMMENDED. Capability tags for matching.
+   - timestamp: REQUIRED.
+   - nonce: REQUIRED.
+   - signature: REQUIRED.
+
+8.  Blockchain Anchoring
+
+   8.1.  Mandatory Anchor Requirement
+
+   Every beacon MUST contain at least one valid blockchain anchor:
+   - solana_tx: Solana Memo Program transaction signature, OR
+   - base_tx: Base L2 self-transaction hash
+
+   Beacons without anchors MUST be rejected by receivers.
+
+   8.2.  Anchor Format
+
+   Solana: Transaction signature (base58, ~88 characters)
+           Must include commitment hash in Memo instruction data.
+
+   Base L2: Transaction hash (0x-prefixed hex, 66 characters)
+            Must include commitment hash in tx.data field.
+
+   8.3.  Finality Requirements
+
+   Solana: "confirmed" status (1 slot confirmation)
+   Base L2: Block included and not reorged (6 confirmations recommended)
+
+   8.4.  Verification
+
+   Receivers MAY verify anchors by querying RPC endpoints:
+   - Solana: getTransaction(signature)
+   - Base: eth_getTransactionByHash(hash)
+
+   Future versions will specify a lightweight verification protocol.
+
+9.  ZK Statement Definition
+
+   9.1.  Concrete Statement (Groth16/PLONK)
+
+   The ZK proof referenced by zk_proof_ref MUST prove:
+
+     "The prover executed program P (identified by hash H) 
+      on input commitment I, producing output commitment O, 
+      within resource bound R (CPU cycles, memory), 
+      completing before deadline D."
+
+   9.2.  Public Inputs
+
+   - H: SHA-256 hash of program/Wasm module
+   - I: SHA-256 hash of input data (committed, not revealed)
+   - O: SHA-256 hash of output data (the poe_hash)
+   - D: Unix timestamp of SLA deadline
+   - R: Resource bound (optional, for cost verification)
+
+   9.3.  Verification Key Distribution
+
+   Verification keys SHOULD be distributed via:
+   - Content-addressed storage (IPFS/Arweave)
+   - On-chain registry (future specification)
+
+   9.4.  Trusted Setup
+
+   Groth16 circuits require a trusted setup. Implementations SHOULD:
+   - Use a multi-party ceremony for production circuits
+   - Document the setup procedure and participants
+   - Consider PLONK for universal setup benefits
+
+10. Security Considerations
+
+   10.1. Sybil Resistance
+
+   The proof requirement ensures agents cannot claim capabilities
+   without demonstrated execution AND on-chain anchor.
+
+   Cost-of-attack = blockchain transaction fees + ZK proof generation.
+
+   Future versions may add staking requirements.
+
+   10.2. Spam Resistance
+
+   Rate limiting: Agents SHOULD broadcast at most once per 5 minutes.
+   Receivers SHOULD drop beacons exceeding this rate per peer_id.
+
+   10.3. Metadata Privacy
+
+   WARNING: On-chain anchors create permanent public records.
+   Correlation between agent_id, wallet addresses, and PoE patterns
+   may enable de-anonymization. Future versions may specify
+   stealth addresses or mixer integration.
+
+11. IANA Considerations
+
+   This document requests registration of:
+   - MIME type: application/poe-beacon+protobuf
+   - Well-known URI: /.well-known/pdp-v2
+   - GossipSub topic: pdp/discovery/v2
+
+12. References
+
+   [A2A]      Google, "Agent-to-Agent Protocol", a2a-protocol.org
+   [AID]      Mozley et al., "AI Agent Discovery Problem Statement",
+              draft-mozley-aidiscovery-00, October 2025
+   [RFC2119]  Bradner, S., "Key words for use in RFCs", RFC 2119
+   [PROTOBUF] Google, "Protocol Buffers", protobuf.dev
+   [ED25519]  Bernstein et al., "High-speed high-security signatures"
+   [GROTH16]  Groth, "On the Size of Pairing-based Non-interactive Arguments"
+
+Authors' Addresses
+
+   Berlin AI Labs
+   Berlin, Germany
+   Email: contact@berlinailabs.de
+
+---
+This document reflects hardening based on adversarial audit by 
+DeepSeek-R1 and GPT-5.2 (February 2026).

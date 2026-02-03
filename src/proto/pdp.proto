@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package pdp;
+
+// PoEBeacon: The canonical gossip message format for the PDP network.
+// This replaces the JSON format to achieve ~80% bandwidth savings.
+message PoEBeacon {
+  // Agent's human-readable identifier
+  string node_id = 1;
+  
+  // libp2p PeerID (Ed25519 public key, 32 bytes)
+  bytes peer_id = 2;
+  
+  // SHA-256 hash of the execution artifact bundle (32 bytes)
+  bytes poe_hash = 3;
+  
+  // Content-addressed reference to the ZK proof bundle (e.g., IPFS CID)
+  // This keeps the beacon small while proofs can be fetched on-demand.
+  bytes zk_proof_ref = 4;
+  
+  // Solana transaction signature (base58, ~88 chars)
+  string solana_tx = 5;
+  
+  // Base L2 transaction hash (0x-prefixed hex, 66 chars)
+  string base_tx = 6;
+  
+  // Capability tags for semantic matching
+  repeated string capabilities = 7;
+  
+  // Unix timestamp in milliseconds
+  uint64 timestamp = 8;
+  
+  // Monotonically increasing nonce for replay protection
+  uint64 nonce = 9;
+  
+  // Ed25519 signature over the serialized fields 1-9 (64 bytes)
+  bytes signature = 10;
+}
+
+// AnchorProof: On-chain verification result
+message AnchorProof {
+  string chain = 1;        // "solana" | "base"
+  string tx_hash = 2;
+  bool verified = 3;
+  uint64 block_height = 4;
+  uint64 finality_slots = 5; // Solana: confirmations, Base: L1 inclusions
+}

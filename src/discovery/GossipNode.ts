@@ -3,17 +3,18 @@ import { webSockets } from '@libp2p/websockets';
 import { noise } from '@libp2p/noise';
 import { mplex } from '@libp2p/mplex';
 import { gossipsub } from '@libp2p/gossipsub';
-import { bootstrap } from '@libp2p/bootstrap';
-import { multiaddr } from '@multiformats/multiaddr';
-import { pipe } from 'it-pipe';
-import { toString as uint8ArrayToString } from 'uint8arrays/to-string';
-import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string';
+import { initProto, encodeBeacon, decodeBeacon, PoEBeaconProto } from '../proto';
+import { verify } from '../crypto/signing';
 
 export const PDP_TOPICS = {
-    DISCOVERY: 'pdp/discovery/v1',
-    PROOFS: 'pdp/proofs/v1'
+    DISCOVERY: 'pdp/discovery/v2', // V2 uses Protobuf
+    PROOFS: 'pdp/proofs/v2'
 };
 
+// Re-export the Protobuf beacon type for external use
+export type { PoEBeaconProto };
+
+// Legacy interface for backwards compatibility
 export interface PoEBeacon {
     poeHash: string;
     agentId: string;
@@ -26,13 +27,21 @@ export interface PoEBeacon {
 }
 
 /**
- * GossipNode - Real libp2p implementation for the PDP P2P network.
+ * GossipNode V2 - Hardened libp2p implementation with Protobuf + Ed25519.
  */
 export class GossipNode {
     private node: any;
-    private peerDiscoveryCallback?: (peer: PoEBeacon) => void;
+    private peerDiscoveryCallback?: (peer: PoEBeaconProto) => void;
+    private seenNonces: Map<string, number> = new Map(); // peerId -> lastNonce
+    private protoInitialized = false;
 
     async start() {
+        // Initialize Protobuf schema
+        if (!this.protoInitialized) {
+            await initProto();
+            this.protoInitialized = true;
+        }
+
         this.node = await createLibp2p({
             transports: [webSockets()],
             connectionEncrypters: [noise()],
@@ -46,35 +55,67 @@ export class GossipNode {
         });
 
         await this.node.start();
-        console.log(`[P2P] PDP Node started with ID: ${this.node.peerId.toString()}`);
+        console.log(`[P2P] PDP Node V2 started with ID: ${this.node.peerId.toString()}`);
 
-        // Subscribe to discovery topic
         this.node.services.pubsub.subscribe(PDP_TOPICS.DISCOVERY);
 
-        // Listen for messages
-        this.node.services.pubsub.addEventListener('message', (evt: any) => {
+        this.node.services.pubsub.addEventListener('message', async (evt: any) => {
             if (evt.detail.topic === PDP_TOPICS.DISCOVERY) {
                 try {
-                    const data = uint8ArrayToString(evt.detail.data);
-                    const beacon: PoEBeacon = JSON.parse(data);
+                    const beacon = decodeBeacon(evt.detail.data);
+
+                    // SECURITY: Verify signature
+                    const isValidSig = await this.verifyBeaconSignature(beacon);
+                    if (!isValidSig) {
+                        console.warn(`[P2P] Invalid signature from ${beacon.nodeId}, dropping beacon.`);
+                        return;
+                    }
+
+                    // SECURITY: Replay protection via nonce
+                    const peerIdHex = Buffer.from(beacon.peerId).toString('hex');
+                    const lastNonce = this.seenNonces.get(peerIdHex) || 0;
+                    if (beacon.nonce <= lastNonce) {
+                        console.warn(`[P2P] Stale nonce from ${beacon.nodeId}, dropping beacon.`);
+                        return;
+                    }
+                    this.seenNonces.set(peerIdHex, beacon.nonce);
+
+                    // SECURITY: Timestamp freshness (24 hour window)
+                    const ageMs = Date.now() - beacon.timestamp;
+                    if (ageMs > 24 * 60 * 60 * 1000) {
+                        console.warn(`[P2P] Expired beacon from ${beacon.nodeId}, dropping.`);
+                        return;
+                    }
+
                     if (this.peerDiscoveryCallback) {
                         this.peerDiscoveryCallback(beacon);
                     }
                 } catch (e) {
-                    console.error('[P2P] Failed to parse beacon:', e);
+                    console.error('[P2P] Failed to decode/verify beacon:', e);
                 }
             }
         });
     }
 
-    async broadcast(beacon: PoEBeacon) {
-        if (!this.node) throw new Error('Node not started');
-        const data = uint8ArrayFromString(JSON.stringify(beacon));
-        await this.node.services.pubsub.publish(PDP_TOPICS.DISCOVERY, data);
-        console.log(`[P2P] Broadcasted PoE Beacon: ${beacon.poeHash.substring(0, 10)}...`);
+    /**
+     * Verify the Ed25519 signature over the beacon payload.
+     */
+    private async verifyBeaconSignature(beacon: PoEBeaconProto): Promise<boolean> {
+        // Reconstruct the signed payload (all fields except signature)
+        const payloadBeacon = { ...beacon, signature: new Uint8Array(0) };
+        const payloadBytes = encodeBeacon(payloadBeacon);
+
+        return await verify(beacon.signature, payloadBytes, beacon.peerId);
     }
 
-    onDiscovery(callback: (peer: PoEBeacon) => void) {
+    async broadcast(beacon: PoEBeaconProto) {
+        if (!this.node) throw new Error('Node not started');
+        const data = encodeBeacon(beacon);
+        await this.node.services.pubsub.publish(PDP_TOPICS.DISCOVERY, data);
+        console.log(`[P2P] Broadcasted PoE Beacon (${data.length} bytes)`);
+    }
+
+    onDiscovery(callback: (peer: PoEBeaconProto) => void) {
         this.peerDiscoveryCallback = callback;
     }
 
@@ -84,7 +125,11 @@ export class GossipNode {
         }
     }
 
-    getPeerId() {
-        return this.node?.peerId.toString();
+    getPeerId(): Uint8Array | null {
+        return this.node?.peerId.toBytes() || null;
+    }
+
+    getPeerIdString(): string {
+        return this.node?.peerId.toString() || '';
     }
 }
