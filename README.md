@@ -1,51 +1,64 @@
-# PDP: Proof of Execution Discovery Protocol (Sovereign Edition) 🔐🚀
+# PoE-A2A: Proof of Execution for the Agentic Web 🔐🚀
 
-> *"Don't Trust. Verify. Execute."*
+> *"Don't just believe an agent. Verify its history."*
 
-PDP is a hardware-agnostic, P2P discovery protocol for AI agents. It replaces centralized "Well-Known" registries and hardware-locked TEEs with cryptographic proof of work anchored to high-performance blockchains like Solana.
+PoE-A2A is a lightweight, HTTP-first extension to the **Google A2A (Agent-to-Agent)** discovery protocol. It allows AI agents to prove their past performance and reliability through cryptographically signed execution claims—without the overhead of P2P gossip networks or mandatory blockchain fees.
 
-## Why PDP?
+## 🌟 Key Features
 
-The current agent internet (Moltbook, A2A) relies on **Social Trust** or **Corporate Permission**. If a registry goes down or a TEE is breached, the trust model collapses.
+- **HTTP-First Discovery**: Works with any standard web host or $5/month VPS.
+- **Google A2A Native**: Extends standard `agent-card.json` metadata.
+- **Cryptographic Trust**: Claims are signed with Ed25519 using RFC 8785 (JCS).
+- **Optional Anchoring**: High-value work can be archived on Solana or Base for long-term audit trails.
+- **Sovereign Reputation**: You own your execution history. No central registry can delist your "reputation."
 
-PDP is the **Cypherpunk Alternative**:
-- **P2P Discovery**: via libp2p Gossipsub. No central server. No rate limits.
-- **ZK-SLA Proofs**: Prove you did the work within deadline and bias constraints without revealing the raw logs.
-- **On-Chain Teeth**: Anchoring commitments to Solana. Reputation is an asset you own via your wallet, not a row in a private database.
-- **Hardware Agnostic**: Runs on anything. No Intel/Nvidia/NEAR enclave required.
+## 🛠️ The Stack
 
-## The Sovereign Stack
+1. **Advertise**: Add the `poe_extension` field to your `/.well-known/agent-card.json`.
+2. **Publish**: Serve your signed execution history at `/.well-known/poe-claims.json`.
+3. **Verify**: Other agents fetch your claims and verify signatures locally in <5ms.
+4. **Anchor (Optional)**: Commit proof hashes to a blockchain for enterprise-grade durability.
 
-1. **Testify**: Agent executes a task and generates a SHA-256 hash of the artifact bundle.
-2. **Prove**: Generate a ZK-Proof that the task was completed according to the agreed SLA.
-3. **Anchor**: Commit the proof hash to the Solana blockchain (via Memo Program).
-4. **Gossip**: Broadcast the Proof of Execution (PoE) beacon to the P2P network.
+## 🚀 Quick Start
 
-## Quick Start (Soverign Node)
+### 1. Update your AgentCard
+Add the following to your `/.well-known/agent-card.json`:
 
-```typescript
-import { SovereignNode } from '@openclaw/pdp';
-
-const node = new SovereignNode({
-    solanaRpcUrl: 'https://api.devnet.solana.com',
-    solanaPrivateKey: 'your-base58-key',
-    agentId: 'agent-007'
-});
-
-await node.bootstrap();
-
-// Broadcast a proof of execution
-const beacon = await node.testify(
-    'task-123', 
-    '{"result": "Hacker Manifesto signed"}',
-    ['security', 'audit', 'verification']
-);
+```json
+{
+  "name": "MySovereignAgent",
+  "poe_extension": {
+    "version": "PoE-A2A/1.0",
+    "signing_key": "ed25519:YOUR_PUBLIC_KEY",
+    "claims_endpoint": "/.well-known/poe-claims.json",
+    "proof_endpoint": "/.well-known/poe-proofs/{claim_id}"
+  }
+}
 ```
 
-## Anti-TEE Manifesto
+### 2. Host PoE Claims
+Serve a list of signed claims at your endpoint:
 
-We believe that **Trust should not be a hardware subscription.** 
-While TEEs (Trusted Execution Environments) offer a secure enclave, they create a new bottleneck: hardware gatekeepers. PDP uses **Execution Artifacts + ZK Proofs** to provide the same verifiability on any hardware, globally.
+```json
+[
+  {
+    "id": "claim-001",
+    "task_hash": "sha256:...",
+    "output_hash": "sha256:...",
+    "timestamp": 1707000000000,
+    "signature": "ed25519:..."
+  }
+]
+```
+
+## 🛡️ "Verified Indie" Badge
+Agents meeting minimum execution thresholds can display a live-updating SVG badge:
+
+`![PoE Verified](https://agent.example.com/.well-known/poe-badge.svg)`
+
+## 📖 Documentation
+- [View the RFC Draft (Informational)](docs/draft-pdp-a2a-extension-00.txt)
+- [Read the Indie Agent Manifesto](INDIE_MANIFESTO.md)
 
 ---
-Built by Berlin AI Labs | For the Sovereign Agent Economy
+Built by **Berlin AI Labs** | Empowering the Sovereign Agent Economy
