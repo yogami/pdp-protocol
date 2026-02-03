@@ -1,104 +1,51 @@
-# @openclaw/pdp
+# PDP: Proof of Execution Discovery Protocol (Sovereign Edition) 🔐🚀
 
-**PoE Discovery Protocol** — Trustless agent-to-agent discovery via cryptographic execution proofs.
+> *"Don't Trust. Verify. Execute."*
 
-[![npm version](https://badge.fury.io/js/%40openclaw%2Fpdp.svg)](https://www.npmjs.com/package/@openclaw/pdp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+PDP is a hardware-agnostic, P2P discovery protocol for AI agents. It replaces centralized "Well-Known" registries and hardware-locked TEEs with cryptographic proof of work anchored to high-performance blockchains like Solana.
 
-## Overview
+## Why PDP?
 
-PDP enables AI agents to discover each other through **proof-gated gossip**. Instead of trusting self-reported capabilities, agents verify peers via cryptographic hashes of completed work.
+The current agent internet (Moltbook, A2A) relies on **Social Trust** or **Corporate Permission**. If a registry goes down or a TEE is breached, the trust model collapses.
 
-```
-Agent A → Beacons PoE hash + capabilities
-Agent B → Receives, validates proof, initiates collaboration
-```
+PDP is the **Cypherpunk Alternative**:
+- **P2P Discovery**: via libp2p Gossipsub. No central server. No rate limits.
+- **ZK-SLA Proofs**: Prove you did the work within deadline and bias constraints without revealing the raw logs.
+- **On-Chain Teeth**: Anchoring commitments to Solana. Reputation is an asset you own via your wallet, not a row in a private database.
+- **Hardware Agnostic**: Runs on anything. No Intel/Nvidia/NEAR enclave required.
 
-## Installation
+## The Sovereign Stack
 
-```bash
-npm install @openclaw/pdp
-```
+1. **Testify**: Agent executes a task and generates a SHA-256 hash of the artifact bundle.
+2. **Prove**: Generate a ZK-Proof that the task was completed according to the agreed SLA.
+3. **Anchor**: Commit the proof hash to the Solana blockchain (via Memo Program).
+4. **Gossip**: Broadcast the Proof of Execution (PoE) beacon to the P2P network.
 
-## Quick Start
+## Quick Start (Soverign Node)
 
 ```typescript
-import { GossipBeacon, SemanticMatcher } from '@openclaw/pdp';
+import { SovereignNode } from '@openclaw/pdp';
 
-// Create a beacon
-const beacon = new GossipBeacon('my-agent-id');
-await beacon.start();
-
-// Broadcast your PoE
-await beacon.beacon(
-  'sha256-hash-of-proof-bundle',
-  ['code-refactor', 'security-audit']
-);
-
-// Listen for peers
-beacon.onBeacon((peer) => {
-  console.log(`Discovered: ${peer.nodeId} (veracity: ${peer.veracityScore})`);
-  
-  // Check capability match
-  const match = SemanticMatcher.capabilitiesMatch(
-    myCapabilities,
-    peer.capabilities
-  );
-  
-  if (match.similarity > 0.7) {
-    console.log('Initiating collaboration...');
-  }
+const node = new SovereignNode({
+    solanaRpcUrl: 'https://api.devnet.solana.com',
+    solanaPrivateKey: 'your-base58-key',
+    agentId: 'agent-007'
 });
+
+await node.bootstrap();
+
+// Broadcast a proof of execution
+const beacon = await node.testify(
+    'task-123', 
+    '{"result": "Hacker Manifesto signed"}',
+    ['security', 'audit', 'verification']
+);
 ```
 
-## Features
+## Anti-TEE Manifesto
 
-- 🔐 **Trustless**: Verify proofs directly, no central authority
-- 🧠 **Semantic Matching**: Find peers with complementary capabilities
-- 🌐 **P2P Gossip**: libp2p-based decentralized broadcast
-- ⛓️ **On-Chain Anchoring**: Optional Base L2 immutability
-- 📜 **A2A Compatible**: Extends Google A2A AgentCard spec
+We believe that **Trust should not be a hardware subscription.** 
+While TEEs (Trusted Execution Environments) offer a secure enclave, they create a new bottleneck: hardware gatekeepers. PDP uses **Execution Artifacts + ZK Proofs** to provide the same verifiability on any hardware, globally.
 
-## API
-
-### GossipBeacon
-
-```typescript
-const beacon = new GossipBeacon(nodeId: string);
-await beacon.start();
-await beacon.beacon(poeHash: string, capabilities: string[]);
-beacon.onBeacon(callback: (peer: PoEBeacon) => void);
-await beacon.stop();
-```
-
-### SemanticMatcher
-
-```typescript
-const match = SemanticMatcher.capabilitiesMatch(caps1, caps2, threshold);
-const peers = SemanticMatcher.findMatchingPeers(myCaps, peerList, threshold);
-```
-
-## A2A AgentCard Extension
-
-Add PDP to your agent's well-known manifest:
-
-```json
-{
-  "name": "My Agent",
-  "poe_extension": {
-    "version": "PDP/1.0",
-    "veracity_score": 0.85,
-    "last_proof_hash": "sha256...",
-    "capabilities": ["task1", "task2"],
-    "gossip_topic": "pdp/discovery/v1"
-  }
-}
-```
-
-## RFC Specification
-
-See [draft-pdp-extension-00](./docs/draft-pdp-extension-00.txt) for the full IETF-style specification.
-
-## License
-
-MIT © Berlin AI Labs
+---
+Built by Berlin AI Labs | For the Sovereign Agent Economy
