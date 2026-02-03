@@ -8,6 +8,7 @@ export interface PoEBeacon {
     veracity: number;
     capabilities: string[];
     solanaTx?: string;
+    baseTx?: string;
     zkProof?: string;
     timestamp: number;
 }

@@ -1,7 +1,9 @@
 import { PoEBeacon } from './discovery/GossipNode';
 export interface SovereignNodeConfig {
-    solanaRpcUrl: string;
-    solanaPrivateKey: string;
+    solanaRpcUrl?: string;
+    solanaPrivateKey?: string;
+    baseRpcUrl?: string;
+    basePrivateKey?: string;
     agentId: string;
     veracityScore?: number;
 }
@@ -15,7 +17,8 @@ export interface SovereignNodeConfig {
  * 4. Broadcast PoE beacon to P2P network
  */
 export declare class SovereignNode {
-    private solana;
+    private solana?;
+    private base?;
     private zk;
     private p2p;
     private config;
@@ -25,6 +28,11 @@ export declare class SovereignNode {
      * Primary flow: Anchors and Broadcasts a new Proof of Execution.
      */
     testify(taskId: string, outputData: string, capabilities: string[]): Promise<PoEBeacon>;
+    /**
+     * Gated Interaction: Verify an external peer's proof before proceeding.
+     * This is the "Boring Infrastructure" Grok mentioned.
+     */
+    verifyPeer(beacon: PoEBeacon): Promise<boolean>;
     onPeerDiscovered(callback: (peer: PoEBeacon) => void): void;
     shutdown(): Promise<void>;
 }

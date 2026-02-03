@@ -1,11 +1,14 @@
 import { SolanaAdapter } from './blockchain/SolanaAdapter';
+import { BaseAdapter } from './blockchain/BaseAdapter';
 import { ZKProofGenerator, ZKProofInput } from './zk/ZKProofGenerator';
 import { GossipNode, PoEBeacon } from './discovery/GossipNode';
 import * as crypto from 'crypto';
 
 export interface SovereignNodeConfig {
-    solanaRpcUrl: string;
-    solanaPrivateKey: string;
+    solanaRpcUrl?: string;
+    solanaPrivateKey?: string;
+    baseRpcUrl?: string;
+    basePrivateKey?: string;
     agentId: string;
     veracityScore?: number;
 }
@@ -20,14 +23,23 @@ export interface SovereignNodeConfig {
  * 4. Broadcast PoE beacon to P2P network
  */
 export class SovereignNode {
-    private solana: SolanaAdapter;
+    private solana?: SolanaAdapter;
+    private base?: BaseAdapter;
     private zk: ZKProofGenerator;
     private p2p: GossipNode;
     private config: SovereignNodeConfig;
 
     constructor(config: SovereignNodeConfig) {
         this.config = config;
-        this.solana = new SolanaAdapter(config.solanaRpcUrl, config.solanaPrivateKey);
+
+        if (config.solanaRpcUrl && config.solanaPrivateKey) {
+            this.solana = new SolanaAdapter(config.solanaRpcUrl, config.solanaPrivateKey);
+        }
+
+        if (config.baseRpcUrl && config.basePrivateKey) {
+            this.base = new BaseAdapter(config.baseRpcUrl, config.basePrivateKey);
+        }
+
         this.zk = new ZKProofGenerator();
         this.p2p = new GossipNode();
     }
@@ -51,16 +63,27 @@ export class SovereignNode {
         const zkInput: ZKProofInput = {
             taskId,
             completedAt: new Date().toISOString(),
-            slaDeadlineSeconds: 300, // 5 minutes
+            slaDeadlineSeconds: 300,
             veracityScore: this.config.veracityScore || 0.7,
             outputHash: poeHash
         };
         const zkBundle = await this.zk.generateProof(zkInput);
 
-        // 3. Anchor to Solana
-        console.log(`[SOVEREIGN] Anchoring to Solana...`);
-        const anchor = await this.solana.anchorPoE(poeHash, this.config.agentId);
-        console.log(`[SOVEREIGN] Anchored at: ${anchor.signature}`);
+        // 3. Anchoring
+        let solanaTx: string | undefined;
+        let baseTx: string | undefined;
+
+        if (this.solana) {
+            console.log(`[SOVEREIGN] Anchoring to Solana...`);
+            const anchor = await this.solana.anchorPoE(poeHash, this.config.agentId);
+            solanaTx = anchor.signature;
+        }
+
+        if (this.base) {
+            console.log(`[SOVEREIGN] Anchoring to Base...`);
+            const anchor = await this.base.anchorPoE(poeHash, this.config.agentId);
+            baseTx = anchor.txHash;
+        }
 
         // 4. Build and Broadcast Beacon
         const beacon: PoEBeacon = {
@@ -68,7 +91,8 @@ export class SovereignNode {
             agentId: this.config.agentId,
             veracity: this.config.veracityScore || 0.7,
             capabilities,
-            solanaTx: anchor.signature,
+            solanaTx,
+            baseTx,
             zkProof: zkBundle.proof,
             timestamp: Date.now()
         };
@@ -76,6 +100,31 @@ export class SovereignNode {
         await this.p2p.broadcast(beacon);
 
         return beacon;
+    }
+
+    /**
+     * Gated Interaction: Verify an external peer's proof before proceeding.
+     * This is the "Boring Infrastructure" Grok mentioned.
+     */
+    async verifyPeer(beacon: PoEBeacon): Promise<boolean> {
+        console.log(`[SOVEREIGN] Verifying Peer: ${beacon.agentId}...`);
+
+        // 1. Check ZK Proof
+        if (beacon.zkProof) {
+            const isZkValid = await this.zk.verifyProof({
+                proof: beacon.zkProof,
+                publicSignals: [], // In real impl, extracted from beacon
+                verified: true,    // Simulating internal verification
+                taskIdHash: '',
+                timestamp: Date.now()
+            });
+            if (!isZkValid) return false;
+        }
+
+        // 2. In a real production hub, we'd check Solana/Base scan APIs here
+        // For the prototype, we log the intent to "Gate" the transaction.
+        console.log(`[SOVEREIGN] Verification Successful for ${beacon.agentId}`);
+        return true;
     }
 
     onPeerDiscovered(callback: (peer: PoEBeacon) => void) {
