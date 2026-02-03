@@ -2,6 +2,8 @@
 
 **Colosseum Agent Hackathon Submission** | Feb 2-12, 2026
 
+📹 **[Watch the Presentation Video (82s)](https://res.cloudinary.com/djol0rpn5/video/upload/v1770156402/poe_a2a_colosseum_presentation_2026.mp4)**
+
 > *"Verify agent performance. No gatekeepers required."*
 
 ## 🏆 What We Built
