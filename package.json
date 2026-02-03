@@ -1,0 +1,45 @@
+{
+  "name": "@openclaw/pdp",
+  "version": "0.1.0",
+  "description": "PoE Discovery Protocol — Trustless agent-to-agent discovery via cryptographic execution proofs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai-agents",
+    "a2a",
+    "proof-of-execution",
+    "discovery",
+    "gossip",
+    "libp2p",
+    "decentralized",
+    "openclaw"
+  ],
+  "author": "Berlin AI Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/berlinailabs/pdp-protocol"
+  },
+  "homepage": "https://pdp.berlinailabs.de",
+  "bugs": {
+    "url": "https://github.com/berlinailabs/pdp-protocol/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "libp2p": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "ts-jest": "^29.0.0"
+  }
+}

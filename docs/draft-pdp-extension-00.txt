@@ -1,0 +1,166 @@
+Internet-Draft                                              Berlin AI Labs
+Intended status: Standards Track                             February 2026
+Expires: August 2026
+
+          Proof of Execution Extension for AI Agent Discovery
+                      draft-pdp-extension-00
+
+Abstract
+
+   This document specifies an extension to AI Agent Discovery (AID)
+   protocols that enables proof-gated peer discovery. Agents broadcast
+   cryptographic hashes of verified execution artifacts (Proof of
+   Execution, PoE) via gossip protocols, enabling trust-first discovery
+   without centralized registries.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Terminology
+   3.  Protocol Overview
+   4.  PoE Beacon Format
+   5.  AgentCard Extension
+   6.  Semantic Matching
+   7.  Security Considerations
+   8.  IANA Considerations
+   9.  References
+
+1.  Introduction
+
+   The Agent-to-Agent (A2A) protocol family enables AI agents to
+   discover and coordinate with each other. However, existing discovery
+   mechanisms rely on either centralized registries or self-reported
+   capabilities without verification.
+
+   This extension introduces Proof of Execution (PoE) as a discovery
+   primitive. Agents prove their capabilities through cryptographically
+   signed execution artifacts, then broadcast proof hashes for peers to
+   discover and validate autonomously.
+
+   Key benefits:
+   - Trustless discovery: Peers verify proofs directly
+   - Sybil resistance: Unproven agents are not discoverable
+   - Local sovereignty: No data leaks beyond hashes/metadata
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119.
+
+   PoE: Proof of Execution - A cryptographic hash of verified task
+        artifacts demonstrating completed work.
+
+   Beacon: A periodic broadcast of PoE metadata for peer discovery.
+
+   Veracity Score: Cumulative reputation derived from validated PoEs.
+
+3.  Protocol Overview
+
+   3.1.  Beacon Broadcasting
+
+   Agents SHOULD broadcast PoE beacons at regular intervals (default:
+   5 minutes) on designated gossip topics. Beacons contain:
+   - PoE hash (SHA-256)
+   - Capability list
+   - Veracity score
+   - Timestamp
+
+   3.2.  Peer Discovery
+
+   Receiving agents:
+   1. Filter beacons by capability match (cosine similarity >= 0.7)
+   2. Validate PoE hash against proof registry (optional on-chain)
+   3. Initiate handshake with verified peers
+
+4.  PoE Beacon Format
+
+   {
+     "nodeId": "string",           // Agent identifier
+     "poeHash": "string",          // SHA-256 of proof bundle
+     "veracityScore": number,      // 0.0 - 1.0
+     "capabilities": ["string"],   // Capability tags
+     "capabilityVector": "string", // Base64-encoded embedding
+     "taskCategory": "string",     // Task type
+     "timestamp": "ISO8601",
+     "metadata": {
+       "tier": 1 | 2 | 3,          // Risk tier
+       "success": boolean
+     }
+   }
+
+5.  AgentCard Extension
+
+   To integrate with existing A2A AgentCard specifications, agents
+   SHOULD include a "poe_extension" field:
+
+   {
+     "name": "Agent Name",
+     "protocol_version": "A2A/1.0",
+     ... existing AgentCard fields ...
+     "poe_extension": {
+       "version": "PDP/1.0",
+       "veracity_score": 0.75,
+       "last_proof_hash": "sha256-hash",
+       "capabilities": ["cap1", "cap2"],
+       "proof_count": 4,
+       "gossip_topic": "pdp/discovery/v1",
+       "beacon_interval_ms": 300000
+     }
+   }
+
+6.  Semantic Matching
+
+   Capability matching uses vector embeddings for fuzzy matching:
+
+   6.1.  Embedding Generation
+   Capabilities are converted to fixed-length vectors using vocabulary
+   projection or language model embeddings.
+
+   6.2.  Similarity Threshold
+   Agents SHOULD use cosine similarity >= 0.7 for capability matches.
+   Lower thresholds MAY be used for broader discovery.
+
+7.  Security Considerations
+
+   7.1.  Proof Validation
+   Agents MUST validate PoE hashes before trusting peer capabilities.
+   Validation MAY include:
+   - On-chain anchor verification
+   - Judge Agent protocol execution
+   - Peer attestation (multi-party verification)
+
+   7.2.  Replay Protection
+   Beacons MUST include timestamps. Receivers SHOULD reject beacons
+   older than 24 hours.
+
+   7.3.  Sybil Resistance
+   The proof requirement ensures agents cannot claim capabilities
+   without demonstrated execution history.
+
+8.  IANA Considerations
+
+   This document requests registration of:
+   - MIME type: application/poe-beacon+json
+   - Well-known URI: /.well-known/poe-extension
+
+9.  References
+
+   [A2A]      Google, "Agent-to-Agent Protocol", a2a-protocol.org
+   [AID]      Mozley et al., "AI Agent Discovery Problem Statement",
+              draft-mozley-aidiscovery-00, October 2025
+   [RFC2119]  Bradner, S., "Key words for use in RFCs", RFC 2119
+
+Authors' Addresses
+
+   Berlin AI Labs
+   Berlin, Germany
+   Email: protocol@berlinailabs.de
+
+---
+This document is a work in progress and subject to revision.
