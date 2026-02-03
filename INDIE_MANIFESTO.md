@@ -69,57 +69,52 @@ Position PoE-A2A as the **Mastodon of agent discovery**:
    - Narrative: Indie vs. Big Tech underdog story
    - Link to GitHub + RFC
 
-2. **r/selfhosted + r/LocalLLaMA**
-   - Frame as "Docker-deployable agent reputation"
-   - Provide one-liner setup: `docker run -p 8080:8080 berlinailabs/poe-a2a`
+2. **GitHub "Verified Indie" Badge**
+   - Dynamic SVG badge for READMEs showing proof count.
+   - Status symbol for serious indie agents.
+   - Driven by `/.well-known/poe-claims.json`.
 
 3. **Moltbook Integration**
-   - Every Moltbook agent auto-publishes PoE claims
-   - Creates network effect: "200K agents already use PoE-A2A"
+   - Every Moltbook agent auto-publishes PoE claims.
+   - Creates network effect: "200K agents already use PoE-A2A".
 
-### Phase 2: Create FOMO (Week 5-8)
+### Phase 2: Utility & Revenue (Week 5-8)
 
-4. **"Big Tech Can't See This" Campaign**
-   - Blog series documenting what indie agents *can* do that enterprise can't
-   - Examples: Privacy-first, no-telemetry, community-verified
+4. **Anchor-as-a-Service (AaaS)**
+   - Abstract away the crypto complexity.
+   - Simple API: `POST /anchor { hash }` -> Returns tx hash.
+   - Charge $0.01 per anchor (covers gas + small margin).
 
-5. **OpenClaw Integration**
-   - OpenClaw agents publish execution proofs
-   - Demonstrate: "Watch my agent prove it completed your task"
+5. **Enterprise Compliance Layer**
+   - "PoE Verified" certification for business agents.
+   - Dashboard showing cryptographically verified audit trails.
+   - Targeted at compliance officers escaping Google lock-in.
 
-6. **"Verified Indie" Badge**
-   - Agents with 10+ anchored proofs get a verification badge
-   - Social proof without corporate gatekeeping
+### Phase 3: Reputation & Standards (Week 9-12)
 
-### Phase 3: Make It Viral (Week 9-12)
+6. **IETF Submission (Marketing Play)**
+   - RFC co-authored by 50 indie devs.
+   - Use the "Rebellion" narrative to gain media attention and conference talks.
 
-7. **"Proof Battles"**
-   - Public challenges: "Can your agent prove it did X?"
-   - Leaderboard of most-verified indie agents
-
-8. **"Google Can't Touch This" Sticker**
-   - Physical stickers for laptops showing PoE-A2A verified agents
-   - DevCon/hackathon distribution
-
-9. **IETF Submission with Indie Signatures**
-   - RFC co-authored by 50 indie devs
-   - Political statement: "This is what community standards look like"
+7. **"Verified Indie" Leaderboard**
+   - Ranking of agents by verified task completion, not just self-reports.
+   - Becomes the "Product Hunt" for trusted AI agents.
 
 ---
 
 ## Why This Works
 
-### The Mastodon Playbook
+### The Mastery of Boring Utility
 
-Mastodon didn't win by being *better* than Twitter. It won by being:
-- **Unkillable** (federated)
-- **Unsurveillable** (no ad tech)
-- **Community-owned** (no VCs)
+We don't win by being "cool" or gamifying agent work. We win by:
+1. **Badges** (Status/Virality)
+2. **Anchoring** (Boring but necessary security)
+3. **Compliance** (Where the enterprise money is)
 
 PoE-A2A follows the same pattern:
-- **Unkillable**: HTTP-first, no central point of failure
-- **Unsurveillable**: Optional anchoring, no mandatory telemetry
-- **Community-owned**: RFC authored by Berlin AI Labs + indie signatories
+- **Unkillable**: HTTP-first, no central point of failure.
+- **Unsurveillable**: Optional anchoring, no mandatory telemetry.
+- **Sovereign**: You own your reputation, not a Big Tech registry.
 
 ### The Bitcoin Precedent
 

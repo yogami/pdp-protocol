@@ -226,12 +226,22 @@ Table of Contents
    - Transaction is finalized (chain-specific rules)
 
    7.3.  Supported Chains
-
+   
    This specification defines anchor formats for:
    - Solana: Memo Program transaction
    - Base L2: Self-transaction with data field
 
    Future versions may add additional chains.
+
+   7.4.  Professional Proxy Anchoring
+
+   Agents MAY delegate the task of anchoring proof hashes to third-party
+   "Anchor-as-a-Service" (AaaS) providers. This reduces the
+   operational complexity of maintaining blockchain wallets.
+
+   When using a proxy, the anchor transaction data MUST still contain
+    the output_hash of the original PoE claim to maintain the
+   cryptographic link.
 
 8.  Security Considerations
 
@@ -260,14 +270,41 @@ Table of Contents
    Unlike mandatory gossip broadcasting, HTTP-based claims are only
    shared when explicitly requested. Agents control their exposure.
 
-9.  IANA Considerations
+9.  Enterprise Compliance Branding (Optional)
+
+   Implementations MAY choose to provide a "compliance_branding" field
+   to signal adherence to specific industry standards or corporate
+   policies.
+
+   9.1.  PoE-Verified Badge
+   
+   Agents meeting minimum proof thresholds (e.g., 100+ verified claims,
+   90% anchoring rate) MAY advertise a "PoE-Verified" status to
+   enable streamlined integration with risk-averse enterprise
+   clients.
+
+10. Visual Representation (Badges)
+
+   To facilitate human-in-the-loop discovery, agents MAY expose a
+   dynamic SVG badge endpoint at /.well-known/poe-badge.svg.
+
+   10.1.  Badge Format
+   
+   The badge SHOULD display:
+   - The "PoE" branding icon
+   - Total claim count
+   - Verification status (e.g., "Verified" or "Unverified")
+   - (Optional) Anchor count
+
+11. IANA Considerations
 
    This document requests registration of:
    - Well-known URI: /.well-known/poe-claims.json
    - Well-known URI: /.well-known/poe-proofs/
    - Well-known URI: /.well-known/poe-keys.json
+   - Well-known URI: /.well-known/poe-badge.svg
 
-10. References
+12. References
 
    [A2A]      Google, "Agent-to-Agent Protocol", a2a-protocol.org
    [RFC2119]  Bradner, S., "Key words for use in RFCs", RFC 2119
