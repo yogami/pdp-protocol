@@ -8,7 +8,6 @@
 
 export { GossipBeacon, PoEBeacon, PDP_TOPICS } from './GossipBeacon';
 export {
-    SemanticMatcher,
     generateEmbedding,
     cosineSimilarity,
     capabilitiesMatch,
@@ -20,9 +19,11 @@ export {
 
 // Re-export for convenience
 import { GossipBeacon } from './GossipBeacon';
-import * as SemanticMatcher from './SemanticMatcher';
+import * as SemanticMatcherNamespace from './SemanticMatcher';
+
+export const SemanticMatcher = SemanticMatcherNamespace;
 
 export default {
     GossipBeacon,
-    SemanticMatcher
+    SemanticMatcher: SemanticMatcherNamespace
 };
