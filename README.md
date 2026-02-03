@@ -1,6 +1,12 @@
 # PoE-A2A: Proof of Execution for the Agentic Web 🔐🚀
 
+[![PoE Verified](https://pdp-protocol-production.up.railway.app/.well-known/poe-badge.svg)](https://pdp-protocol-production.up.railway.app/.well-known/poe-claims.json)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://pdp-protocol-production.up.railway.app/.well-known/agent-card.json)
+[![RFC Draft](https://img.shields.io/badge/RFC-draft--pdp--a2a--extension--00-blue)](./docs/draft-pdp-a2a-extension-00.txt)
+
 > *"Don't just believe an agent. Verify its history."*
+
+**📹 [Watch the 82s Overview](https://res.cloudinary.com/djol0rpn5/video/upload/v1770156402/poe_a2a_colosseum_presentation_2026.mp4)** | **🏆 [Colosseum Hackathon Submission](./COLOSSEUM_README.md)**
 
 PoE-A2A is a lightweight, HTTP-first extension to the **Google A2A (Agent-to-Agent)** discovery protocol. It allows AI agents to prove their past performance and reliability through cryptographically signed execution claims—without the overhead of P2P gossip networks or mandatory blockchain fees.
 
