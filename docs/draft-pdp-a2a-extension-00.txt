@@ -1,0 +1,268 @@
+Internet-Draft                                              Berlin AI Labs
+Intended status: Standards Track                             February 2026
+Expires: August 2026
+
+       Proof of Execution Extension for A2A Agent Discovery (PoE-A2A)
+                          draft-pdp-a2a-extension-00
+
+Abstract
+
+   This document specifies a lightweight extension to the Google A2A
+   Agent Discovery protocol that adds verifiable Proof of Execution
+   (PoE) claims to AgentCards. Agents advertise cryptographically
+   signed execution proofs via standard HTTP endpoints, enabling
+   trust-first discovery without gossip protocols or mandatory 
+   blockchain transactions.
+
+   This extension is designed to be incrementally adoptable by existing
+   A2A implementations with minimal overhead.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Terminology
+   3.  Design Philosophy
+   4.  AgentCard PoE Extension
+   5.  PoE Claim Format
+   6.  Verification Endpoints
+   7.  Optional Blockchain Anchoring
+   8.  Security Considerations
+   9.  IANA Considerations
+   10. References
+
+1.  Introduction
+
+   The Agent-to-Agent (A2A) protocol provides HTTP-based discovery via
+   AgentCards served at /.well-known/agent-card.json. However, current
+   AgentCards rely on self-reported capabilities without verification.
+
+   This extension adds a "poe_claims" field to AgentCards, containing
+   signed attestations of completed work. Unlike previous approaches
+   that required libp2p gossip networks and mandatory blockchain
+   anchoring, this extension:
+
+   - Uses existing HTTP infrastructure (CDN-scalable)
+   - Makes blockchain anchoring OPTIONAL (cost-effective)
+   - Fetches proofs on-demand (minimal bandwidth)
+   - Integrates with existing A2A tooling
+
+   Author: Berlin AI Labs (contact@berlinailabs.de)
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119.
+
+   PoE Claim: A signed attestation of completed work.
+   
+   Proof Bundle: The full execution artifacts (fetched on-demand).
+   
+   Anchor: An optional on-chain record of the PoE hash.
+
+3.  Design Philosophy
+
+   3.1.  HTTP-First
+
+   A2A already uses HTTP. This extension adds PoE without requiring
+   agents to join P2P networks or pay blockchain fees for discovery.
+
+   3.2.  Fetch-on-Demand
+
+   AgentCards contain only claim metadata. Full proofs are fetched
+   from a separate endpoint when verification is needed.
+
+   3.3.  Optional Anchoring
+
+   Blockchain anchoring provides additional assurance but is NOT
+   required for basic discovery. Agents MAY anchor proofs for
+   high-stakes interactions.
+
+   3.4.  Incremental Adoption
+
+   Existing A2A agents can add poe_claims without breaking changes.
+   Agents without PoE claims continue to work normally.
+
+4.  AgentCard PoE Extension
+
+   Agents SHOULD include a "poe_extension" field in their AgentCard:
+
+   {
+     "name": "Example Agent",
+     "description": "Task automation agent",
+     "protocol_version": "A2A/1.0",
+     "capabilities": ["code-review", "security-audit"],
+     
+     "poe_extension": {
+       "version": "PoE-A2A/1.0",
+       "signing_key": "ed25519:base64-pubkey",
+       "claims_count": 47,
+       "claims_endpoint": "/.well-known/poe-claims.json",
+       "proof_endpoint": "/.well-known/poe-proofs/{claim_id}",
+       "anchors": {
+         "solana": "optional",
+         "base": "optional"
+       }
+     }
+   }
+
+   4.1.  Field Definitions
+
+   - signing_key: Ed25519 public key for claim verification (REQUIRED)
+   - claims_count: Total verified claims (REQUIRED)
+   - claims_endpoint: URL to fetch claim list (REQUIRED)
+   - proof_endpoint: URL template to fetch full proofs (REQUIRED)
+   - anchors: Supported anchor chains (OPTIONAL)
+
+5.  PoE Claim Format
+
+   Claims are served at the claims_endpoint as a JSON array:
+
+   [
+     {
+       "id": "claim-001",
+       "task_hash": "sha256:hex",
+       "output_hash": "sha256:hex",
+       "timestamp": 1707000000000,
+       "capabilities_used": ["code-review"],
+       "signature": "ed25519:base64-sig",
+       "anchor": {
+         "chain": "solana",
+         "tx": "base58-sig"
+       }
+     }
+   ]
+
+   5.1.  Claim Fields
+
+   - id: Unique claim identifier (REQUIRED)
+   - task_hash: SHA-256 of task input (REQUIRED)
+   - output_hash: SHA-256 of task output (REQUIRED)
+   - timestamp: Unix milliseconds (REQUIRED)
+   - capabilities_used: Which capabilities were exercised (REQUIRED)
+   - signature: Ed25519 over (id || task_hash || output_hash || timestamp)
+   - anchor: Optional blockchain anchor (chain + tx hash)
+
+   5.2.  Signature Computation
+
+   The signature MUST be computed as:
+     Ed25519.sign(private_key, id + task_hash + output_hash + timestamp)
+
+   Using string concatenation with no delimiters. All hex values
+   MUST be lowercase.
+
+6.  Verification Endpoints
+
+   6.1.  Claim List
+
+   GET /.well-known/poe-claims.json
+   
+   Returns: Array of PoE claims (Section 5)
+   
+   Implementations SHOULD support pagination via ?offset=N&limit=M
+
+   6.2.  Full Proof
+
+   GET /.well-known/poe-proofs/{claim_id}
+   
+   Returns: Full proof bundle for the claim, including:
+   - Task input (or input hash if private)
+   - Task output
+   - Execution logs (optional)
+   - ZK proof (if available)
+
+   6.3.  Verification Flow
+
+   1. Fetch AgentCard from /.well-known/agent-card.json
+   2. Check for poe_extension field
+   3. Fetch claims from claims_endpoint
+   4. Verify each claim signature against signing_key
+   5. (Optional) Verify anchor on-chain
+   6. (Optional) Fetch and verify full proof bundle
+
+7.  Optional Blockchain Anchoring
+
+   Agents MAY anchor proof hashes on-chain for additional assurance.
+
+   7.1.  When to Anchor
+
+   Anchoring is RECOMMENDED for:
+   - High-value transactions (>$1000 equivalent)
+   - Regulatory compliance requirements
+   - Long-term audit trails
+
+   Anchoring is NOT REQUIRED for:
+   - General discovery
+   - Low-stakes interactions
+   - Cost-sensitive agents
+
+   7.2.  Anchor Verification
+
+   When anchor is present, verifiers SHOULD check:
+   - Transaction exists on specified chain
+   - Transaction data contains output_hash
+   - Transaction is finalized (chain-specific rules)
+
+   7.3.  Supported Chains
+
+   This specification defines anchor formats for:
+   - Solana: Memo Program transaction
+   - Base L2: Self-transaction with data field
+
+   Future versions may add additional chains.
+
+8.  Security Considerations
+
+   8.1.  Claim Freshness
+
+   Verifiers SHOULD check claim timestamps and reject claims older
+   than their trust policy allows (e.g., 30 days).
+
+   8.2.  Key Rotation
+
+   Agents SHOULD support key rotation by including:
+   - key_id in claims
+   - Historical keys at /.well-known/poe-keys.json
+
+   8.3.  Replay Protection
+
+   Each claim has a unique id. Verifiers MUST track seen claim IDs
+   to prevent replay attacks.
+
+   8.4.  Rate Limiting
+
+   Claim endpoints SHOULD implement rate limiting to prevent abuse.
+
+   8.5.  Privacy Considerations
+
+   Unlike mandatory gossip broadcasting, HTTP-based claims are only
+   shared when explicitly requested. Agents control their exposure.
+
+9.  IANA Considerations
+
+   This document requests registration of:
+   - Well-known URI: /.well-known/poe-claims.json
+   - Well-known URI: /.well-known/poe-proofs/
+   - Well-known URI: /.well-known/poe-keys.json
+
+10. References
+
+   [A2A]      Google, "Agent-to-Agent Protocol", a2a-protocol.org
+   [RFC2119]  Bradner, S., "Key words for use in RFCs", RFC 2119
+   [RFC8615]  Nottingham, M., "Well-Known URIs", RFC 8615
+   [ED25519]  Bernstein et al., "High-speed high-security signatures"
+
+Authors' Addresses
+
+   Berlin AI Labs
+   Berlin, Germany
+   Email: contact@berlinailabs.de
+
+---
+This document represents a strategic pivot from libp2p gossip to 
+HTTP-first discovery, based on multi-LLM audit consensus (Feb 2026).
