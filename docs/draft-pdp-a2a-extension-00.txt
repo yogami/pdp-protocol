@@ -88,6 +88,23 @@ Table of Contents
    Existing A2A agents can add poe_claims without breaking changes.
    Agents without PoE claims continue to work normally.
 
+   3.5.  Sovereignty by Design
+
+   This extension is designed for agents that cannot or choose not
+   to depend on centralized registries or corporate attestation
+   services. Agents prove their work cryptographically, without
+   requiring permission from any third party.
+
+   Self-hosted agents on minimal infrastructure ($5/month VPS) can
+   participate equally with enterprise deployments.
+
+   3.6.  Community Governance
+
+   This specification is authored by an independent developer
+   community and is not controlled by any single corporation.
+   Future versions will be developed through open RFC processes
+   with community input.
+
 4.  AgentCard PoE Extension
 
    Agents SHOULD include a "poe_extension" field in their AgentCard:
