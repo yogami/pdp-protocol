@@ -17,5 +17,12 @@ export declare class SolanaAdapter {
      * Uses the Salted Hash Commitment pattern from the OpenClaw architecture.
      */
     anchorPoE(poeHash: string, agentId: string): Promise<AnchorResult>;
+    /**
+     * Verifies that a given signature exists on-chain and contains expected data.
+     */
+    verifyAnchor(signature: string, expectedHash: string): Promise<{
+        valid: boolean;
+        data?: string;
+    }>;
     getPublicKey(): string;
 }

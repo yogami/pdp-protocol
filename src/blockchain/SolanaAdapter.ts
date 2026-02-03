@@ -70,6 +70,34 @@ export class SolanaAdapter {
         };
     }
 
+    /**
+     * Verifies that a given signature exists on-chain and contains expected data.
+     */
+    async verifyAnchor(signature: string, expectedHash: string): Promise<{ valid: boolean; data?: string }> {
+        try {
+            const tx = await this.connection.getTransaction(signature, {
+                commitment: 'confirmed',
+                maxSupportedTransactionVersion: 0
+            });
+            if (!tx) return { valid: false };
+
+            // Parse memo data from transaction logs
+            const logs = tx.meta?.logMessages || [];
+            const memoLog = logs.find(l => l.includes('Program log: Memo'));
+            if (!memoLog) return { valid: false };
+
+            // Check if the commitment contains our hash
+            const memoData = memoLog.split('Memo (len ')[1]?.split('): ')[1];
+            if (memoData && memoData.includes(expectedHash.slice(0, 16))) {
+                return { valid: true, data: memoData };
+            }
+            return { valid: false };
+        } catch (error) {
+            console.error('[SolanaAdapter] Verification error:', error);
+            return { valid: false };
+        }
+    }
+
     getPublicKey(): string {
         return this.keypair.publicKey.toBase58();
     }
