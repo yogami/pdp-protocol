@@ -1,5 +1,4 @@
 import { SolanaAdapter, AnchorResult } from './SolanaAdapter';
-import Database from 'better-sqlite3';
 import * as crypto from 'crypto';
 
 interface AgentState {
@@ -16,13 +15,13 @@ export interface AuthenticatedRequest {
 
 /**
  * Anchor-as-a-Service (AaaS) - Hardened Version
- * - SQLite Persistence (Protects against restarts)
+ * - In-Memory Persistence (Protects against replay within session)
  * - Agent Authentication (Prevents spoofing)
  * - HMAC Commitments (Prevents tampering)
  */
 export class AaaS {
     private solana: SolanaAdapter | null = null;
-    private db: Database.Database;
+    private agentStateMap: Map<string, AgentState> = new Map();
 
     constructor() {
         const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
@@ -35,30 +34,15 @@ export class AaaS {
             console.warn('[AaaS] No SOLANA_PRIVATE_KEY found. Anchoring will be simulated.');
         }
 
-        // Initialize SQLite DB for state persistence
-        this.db = new Database('poe_anchors.db');
-        this.db.exec(`
-            CREATE TABLE IF NOT EXISTS agent_state (
-                agentId TEXT PRIMARY KEY,
-                lastSig TEXT,
-                seq INTEGER
-            )
-        `);
+        console.log('[AaaS] Using in-memory state storage');
     }
 
     private getAgentState(agentId: string): AgentState {
-        const row = this.db.prepare('SELECT lastSig, seq FROM agent_state WHERE agentId = ?').get(agentId) as AgentState;
-        return row || { lastSig: '', seq: 0 };
+        return this.agentStateMap.get(agentId) || { lastSig: '', seq: 0 };
     }
 
     private saveAgentState(agentId: string, state: AgentState) {
-        this.db.prepare(`
-            INSERT INTO agent_state (agentId, lastSig, seq)
-            VALUES (?, ?, ?)
-            ON CONFLICT(agentId) DO UPDATE SET
-            lastSig = excluded.lastSig,
-            seq = excluded.seq
-        `).run(agentId, state.lastSig, state.seq);
+        this.agentStateMap.set(agentId, state);
     }
 
     private async verifyAuthorization(req: AuthenticatedRequest): Promise<boolean> {
