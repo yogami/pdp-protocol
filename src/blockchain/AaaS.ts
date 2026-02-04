@@ -51,9 +51,9 @@ export class AaaS {
             // Dynamic import for ES module
             const ed = await import('@noble/ed25519');
 
-            // Polyfill for Node.js (v3 uses async sha512)
+            // Polyfill for Node.js (v3 uses hashes.sha512 async)
             const sha512 = async (...m: any[]) => crypto.createHash('sha512').update(Buffer.concat(m.map(b => Buffer.from(b)))).digest();
-            (ed.etc as any).sha512 = sha512;
+            (ed as any).hashes.sha512 = sha512;
 
             const sigBytes = Buffer.from(req.agentSignature, 'hex');
             const pubBytes = Buffer.from(req.agentPublicKey, 'hex');
