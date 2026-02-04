@@ -1,11 +1,6 @@
 import { SolanaAdapter, AnchorResult } from './SolanaAdapter';
 import Database from 'better-sqlite3';
 import * as crypto from 'crypto';
-import * as ed from '@noble/ed25519';
-
-// Polyfill for noble ed25519 in Node.js
-const sha512 = (...m: any[]) => crypto.createHash('sha512').update(Buffer.concat(m.map(b => Buffer.from(b)))).digest();
-(ed as any).hashes.sha512 = sha512;
 
 interface AgentState {
     lastSig: string;
@@ -69,6 +64,13 @@ export class AaaS {
     private async verifyAuthorization(req: AuthenticatedRequest): Promise<boolean> {
         const message = Buffer.from(req.poeHash + req.agentId);
         try {
+            // Dynamic import for ES module
+            const ed = await import('@noble/ed25519');
+
+            // Polyfill for Node.js
+            const sha512 = (...m: any[]) => crypto.createHash('sha512').update(Buffer.concat(m.map(b => Buffer.from(b)))).digest();
+            (ed as any).hashes.sha512 = sha512;
+
             const sigBytes = Buffer.from(req.agentSignature, 'hex');
             const pubBytes = Buffer.from(req.agentPublicKey, 'hex');
             const isValid = await ed.verify(sigBytes, message, pubBytes);
