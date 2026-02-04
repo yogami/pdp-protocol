@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc version="3" ipr="trust200902" docName="draft-veracitycore-pdp-a2a-extension-00" submissionType="independent" category="info" xml:lang="en" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<front>
+  <title abbrev="PoE-A2A Extension">Proof of Execution Extension for Agent-to-Agent (A2A) Discovery</title>
+  <seriesInfo name="Internet-Draft" value="draft-veracitycore-pdp-a2a-extension-00"/>
+  
+  <author initials="V." surname="Core" fullname="Veracity Core">
+    <organization>Berlin AI Labs</organization>
+    <address>
+      <postal>
+        <city>Berlin</city>
+        <country>Germany</country>
+      </postal>
+      <email>sales@berlinailabs.de</email>
+    </address>
+  </author>
+
+  <date year="2026" month="February" day="04"/>
+
+  <abstract>
+    <t>This document defines an extension to the Agent-to-Agent (A2A) discovery protocol (specifically targeting .well-known/agent-card.json). It introduces a standardized method for agents to publish cryptographically verifiable proofs of their task execution history, mitigating "Agent Hallucination" risks in chained workflows.</t>
+  </abstract>
+</front>
+
+<middle>
+  <section anchor="intro" title="Introduction">
+    <t>The rise of autonomous agents interacting via HTTP discovery APIs creates a "Trust Gap." An invoking agent has no standardized mechanism to verify that a service agent effectively performed a task without direct API-level integration or centralized reputation systems.</t>
+    
+    <t>The Proof of Execution (PoE) extension solves this by defining a schema for signed execution claims within the Agent Card, establishing cryptographic binding between Agent Identity and execution results.</t>
+  </section>
+
+  <section anchor="protocol" title="Protocol Specification">
+    <section anchor="discovery" title="Discovery">
+      <t>Agents advertising support for PoE MUST enable the <tt>poe-v3</tt> capability in their agent card and provide the discovery endpoints.</t>
+      
+      <artwork type="json">
+{
+  "capabilities": ["poe-v3"],
+  "poe_endpoints": {
+    "claims": "/.well-known/poe-claims.json",
+    "badge": "/.well-known/poe-badge.svg"
+  }
+}
+      </artwork>
+    </section>
+
+    <section anchor="claim" title="The Claim Object">
+      <t>A PoE Claim is a JSON object signed by the Agent's Ed25519 private key. The signature MUST bind the task hash to the agent's identity.</t>
+      
+      <artwork type="json">
+{
+  "id": "claim_uuid_v4",
+  "agent_id": "hex_public_key",
+  "task_hash": "sha256(input + output)",
+  "timestamp": "ISO8601",
+  "signature": "ed25519_signature_of_fields",
+  "anchor": {
+    "chain": "solana",
+    "tx": "signature_hash",
+    "seq": 105,
+    "prev_sig": "previous_tx_signature"
+  }
+}
+      </artwork>
+    </section>
+  </section>
+
+  <section anchor="security" title="Security Considerations">
+    <section anchor="auth" title="Authorization (Identity Binding)">
+      <t>To prevent identity spoofing, the <tt>agent_id</tt> field MUST correspond to the Ed25519 public key used to generate the <tt>signature</tt>. Verifiers MUST reject any claim where signature verification fails.</t>
+    </section>
+
+    <section anchor="chain" title="Ordering and Replay Protection">
+      <t>Anchored claims MUST utilize a "Back-Linked Hash Chain" mechanism. Each anchor transaction must include a strictly monotonic sequence number (<tt>seq</tt>) and the signature of the previous transaction (<tt>prev</tt>). This prevents malicious operators from inserting fake claims into the past or reordering history.</t>
+    </section>
+    
+    <section anchor="persistence" title="State Persistence">
+      <t>Implementers MUST ensure that the sequence state is persisted to stable storage (e.g., SQLite) to prevent "Reset Attacks" where a node restart allows sequence reuse.</t>
+    </section>
+  </section>
+
+  <section anchor="iana" title="IANA Considerations">
+    <t>This document requests the registration of the <tt>proofs</tt> field in the Agent Card registry.</t>
+  </section>
+</middle>
+
+<back>
+</back>
+</rfc>

@@ -123,6 +123,35 @@ app.get('/.well-known/poe-badge.svg', (_req, res) => {
     `);
 });
 
+// Import AaaS for secure anchoring
+import { AaaS } from './blockchain/AaaS';
+const aaas = new AaaS();
+
+// Secured Anchor Endpoint (requires Ed25519 authentication)
+app.post('/anchor', async (req, res) => {
+    const { poeHash, agentId, agentSignature, agentPublicKey } = req.body;
+
+    if (!poeHash || !agentId || !agentSignature || !agentPublicKey) {
+        res.status(400).json({
+            error: 'Missing required fields',
+            required: ['poeHash', 'agentId', 'agentSignature', 'agentPublicKey']
+        });
+        return;
+    }
+
+    try {
+        const result = await aaas.managedAnchor({
+            poeHash,
+            agentId,
+            agentSignature,
+            agentPublicKey
+        });
+        res.json(result);
+    } catch (error: any) {
+        res.status(403).json({ error: error.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`[PDP] Demo server running on port ${PORT}`);
     console.log(`[PDP] Node ID: ${NODE_ID}`);
