@@ -97,10 +97,7 @@ export class AaaS {
 
         if (this.solana) {
             try {
-                result = await this.solana.anchorPoE(req.poeHash, req.agentId, {
-                    sequence: nextSeq,
-                    prevSignature: state.lastSig || undefined
-                });
+                result = await this.solana.anchorPoE(req.poeHash, req.agentId);
             } catch (error) {
                 console.error(`[AaaS] Anchoring failed:`, error);
                 throw new Error('Blockchain anchoring failed. Please try again.');
