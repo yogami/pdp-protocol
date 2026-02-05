@@ -1,0 +1,102 @@
+name: Quality Gate 🛡️
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Detect Project Type
+        id: detect
+        run: |
+          if [ -f "package.json" ]; then echo "type=node" >> $GITHUB_OUTPUT
+          elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then echo "type=python" >> $GITHUB_OUTPUT
+          else echo "type=unknown" >> $GITHUB_OUTPUT; fi
+      
+      # === Node.js Projects ===
+      - name: Setup Node
+        if: steps.detect.outputs.type == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies (Node)
+        if: steps.detect.outputs.type == 'node'
+        run: npm ci || npm install
+      
+      - name: TypeScript Check
+        if: steps.detect.outputs.type == 'node'
+        run: |
+          if grep -q '"typescript"' package.json 2>/dev/null || [ -f "tsconfig.json" ]; then
+            echo "🔍 Running TypeScript check..."
+            npx tsc --noEmit
+          else
+            echo "⏭️ No TypeScript detected, skipping"
+          fi
+      
+      - name: Lint Check
+        if: steps.detect.outputs.type == 'node'
+        run: |
+          if grep -q '"lint"' package.json 2>/dev/null; then
+            echo "🔍 Running lint..."
+            npm run lint
+          else
+            echo "⏭️ No lint script, skipping"
+          fi
+      
+      - name: Run Tests
+        if: steps.detect.outputs.type == 'node'
+        run: |
+          if grep -q '"test"' package.json 2>/dev/null; then
+            echo "🧪 Running tests..."
+            npm test
+          else
+            echo "⏭️ No test script, skipping"
+          fi
+      
+      # === Python Projects ===
+      - name: Setup Python
+        if: steps.detect.outputs.type == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Dependencies (Python)
+        if: steps.detect.outputs.type == 'python'
+        run: |
+          pip install --upgrade pip
+          if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
+          if [ -f "pyproject.toml" ]; then pip install -e .; fi
+          pip install ruff pytest 2>/dev/null || true
+      
+      - name: Lint Check (Python)
+        if: steps.detect.outputs.type == 'python'
+        run: |
+          if command -v ruff &> /dev/null; then
+            echo "🔍 Running ruff..."
+            ruff check .
+          else
+            echo "⏭️ Ruff not available, skipping"
+          fi
+      
+      - name: Run Tests (Python)
+        if: steps.detect.outputs.type == 'python'
+        run: |
+          if [ -d "tests" ] || [ -d "test" ]; then
+            echo "🧪 Running pytest..."
+            pytest
+          else
+            echo "⏭️ No tests directory, skipping"
+          fi
+      
+      - name: Quality Gate Summary
+        run: |
+          echo "✅ Quality Gate passed!"
+          echo "Project type: ${{ steps.detect.outputs.type }}"
