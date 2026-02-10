@@ -1,41 +1,120 @@
 /**
- * PDP Demo Server
- * Exposes PDP beacon and discovery endpoints
+ * PDP VTA (Verifiable Trust Anchor) Node
+ * 
+ * VERA Reference Implementation (Phase 2)
+ * Exposes PDP endpoints for Proof of Execution and Tool Execution Receipts.
  */
 
 import express from 'express';
-import { GossipBeacon, PDP_TOPICS } from './GossipBeacon';
+import { SovereignNode } from './SovereignNode';
+import { PDP_TOPICS } from './discovery/GossipNode';
 import { capabilitiesMatch, generateEmbedding } from './SemanticMatcher';
+import { AaaS } from './blockchain/AaaS';
+
+import { SignatureAlgorithm } from './crypto/SignatureProvider';
 
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const NODE_ID = process.env.NODE_ID || 'pdp-demo-node';
+const NODE_ID = process.env.NODE_ID || 'pdp-sovereign-node';
 
-// Initialize beacon
-const beacon = new GossipBeacon(NODE_ID);
+// Initialize Sovereign Node (Hardened VERA Node)
+const sovereignNode = new SovereignNode({
+    agentId: NODE_ID,
+    solanaRpcUrl: process.env.SOLANA_RPC_URL,
+    solanaPrivateKey: process.env.SOLANA_PRIVATE_KEY,
+    signatureAlgorithm: (process.env.SIGNATURE_ALGO as SignatureAlgorithm) || 'Ed25519'
+});
+
+// Initialize Anchor Service
+const aaas = new AaaS();
+
+// Initialize Moltbook Signal Collector (Workstream 6)
+import { MoltbookSignalCollector } from './vera/MoltbookSignalCollector';
+if (process.env.MOLTBOOK_INTAKE_URL) {
+    const collector = new MoltbookSignalCollector(
+        sovereignNode,
+        process.env.MOLTBOOK_INTAKE_URL
+    );
+    collector.start();
+}
+
+// Start the node
+sovereignNode.bootstrap().catch(err => {
+    console.error('Failed to bootstrap Sovereign Node:', err);
+    process.exit(1);
+});
 
 // Health check
 app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', nodeId: NODE_ID, veracity: beacon.getVeracity() });
+    res.json({
+        status: 'ok',
+        nodeId: NODE_ID,
+        publicKey: sovereignNode.getPublicKey()
+            ? Buffer.from(sovereignNode.getPublicKey()!).toString('hex')
+            : 'bootstrapping'
+    });
 });
 
-// Start beacon
+// ─── VERA §4.2.1a: Capability & Nonce Management ───
+
+// Issue Authorization Nonce (PEP -> Tool)
+app.post('/poe/issue-nonce', (req, res) => {
+    const { actionId, toolId, requestHash } = req.body;
+
+    if (!actionId || !toolId || !requestHash) {
+        res.status(400).json({ error: 'Missing required fields: actionId, toolId, requestHash' });
+        return;
+    }
+
+    try {
+        const nonce = sovereignNode.issueAuthorizationNonce(actionId, toolId, requestHash);
+        res.json({ nonce });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ─── VERA §4.2: Proof of Execution ───
+
+// Testify (Broadcast PoE) with optional Receipt
+app.post('/poe/testify', async (req, res) => {
+    const { actionId, taskId, outputData, capabilities, receipt } = req.body;
+
+    if (!actionId || !taskId || !outputData || !capabilities) {
+        res.status(400).json({
+            error: 'Missing required fields',
+            required: ['actionId', 'taskId', 'outputData', 'capabilities']
+        });
+        return;
+    }
+
+    try {
+        const poe = await sovereignNode.testify(
+            actionId,
+            taskId,
+            outputData,
+            capabilities,
+            receipt // Optional ToolExecutionReceipt
+        );
+        res.json({ status: 'broadcasted', poe });
+    } catch (error: any) {
+        console.error('Testify error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ─── Legacy/Compatibility Endpoints (Mapped to VERA logic) ───
+
 app.post('/beacon/start', async (_req, res) => {
-    await beacon.start();
+    // Sovereign node starts automatically, but we acknowledge the request
     res.json({ status: 'started', topic: PDP_TOPICS.DISCOVERY });
 });
 
-// Broadcast PoE
-app.post('/beacon/broadcast', async (req, res) => {
-    const { poeHash, capabilities, metadata } = req.body;
-    if (!poeHash || !capabilities) {
-        res.status(400).json({ error: 'poeHash and capabilities required' });
-        return;
-    }
-    const result = await beacon.beacon(poeHash, capabilities, metadata);
-    res.json({ status: 'broadcasted', beacon: result });
+app.post('/beacon/stop', async (_req, res) => {
+    await sovereignNode.shutdown();
+    res.json({ status: 'stopped' });
 });
 
 // Check capability match
@@ -52,82 +131,24 @@ app.post('/embed', (req, res) => {
     res.json({ capabilities, vector });
 });
 
-// A2A AgentCard with PoE extension
+// A2A AgentCard with VERA PoE extension
 app.get('/.well-known/agent.json', (_req, res) => {
+    const pubKey = sovereignNode.getPublicKey();
     res.json({
-        name: 'PDP Demo Node',
-        protocol_version: 'PDP/1.0',
+        name: 'PDP Sovereign Node',
+        protocol_version: 'PDP/2.0 (VERA)',
         poe_extension: {
-            version: 'PDP/1.0',
-            veracity_score: beacon.getVeracity(),
-            capabilities: ['beacon', 'discovery', 'semantic-match'],
+            version: 'VERA/1.0',
+            trust_tier: 'T2',
+            capabilities: ['verification', 'anchoring', 'discovery'],
             gossip_topic: PDP_TOPICS.DISCOVERY,
-            beacon_interval_ms: 300000
+            public_key: pubKey ? Buffer.from(pubKey).toString('hex') : null
         }
     });
 });
 
-// Stop beacon
-app.post('/beacon/stop', async (_req, res) => {
-    await beacon.stop();
-    res.json({ status: 'stopped' });
-});
+// ─── Anchoring Service ───
 
-// =========== PoE-A2A EXTENSION ENDPOINTS ===========
-
-// A2A AgentCard with PoE extension (updated for RFC spec)
-app.get('/.well-known/agent-card.json', (_req, res) => {
-    res.json({
-        name: 'Berlin-Sovereign-Validator',
-        description: 'PoE-A2A reference implementation for Colosseum Agent Hackathon',
-        protocol_version: 'A2A/1.0',
-        capabilities: ['verification', 'anchoring', 'discovery'],
-        poe_extension: {
-            version: 'PoE-A2A/1.0',
-            signing_key: 'ed25519:' + (process.env.POE_SIGNING_KEY || 'demo-key'),
-            claims_count: 1,
-            claims_endpoint: '/.well-known/poe-claims.json',
-            proof_endpoint: '/.well-known/poe-proofs/{claim_id}',
-            authorized_anchors: [process.env.SOLANA_WALLET || 'devnet-wallet'],
-            anchors: { solana: 'optional' }
-        }
-    });
-});
-
-// PoE Claims Endpoint
-app.get('/.well-known/poe-claims.json', (_req, res) => {
-    res.json([
-        {
-            id: 'claim-colosseum-001',
-            key_id: 'v1',
-            task_hash: 'sha256:hackathon-submission-feb-2026',
-            output_hash: 'sha256:poe-a2a-sovereign-trust-layer',
-            timestamp: Date.now(),
-            valid_until: Date.now() + 30 * 24 * 60 * 60 * 1000,
-            capabilities_used: ['verification', 'discovery'],
-            signature: 'ed25519:demo-signature-pending-real-key'
-        }
-    ]);
-});
-
-// PoE Badge (dynamic SVG)
-app.get('/.well-known/poe-badge.svg', (_req, res) => {
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.send(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
-            <rect width="140" height="20" rx="3" fill="#1a1a1a"/>
-            <rect x="0" width="50" height="20" rx="3" fill="#4CAF50"/>
-            <text x="25" y="14" fill="#fff" font-family="Arial" font-size="11" text-anchor="middle">PoE</text>
-            <text x="95" y="14" fill="#fff" font-family="Arial" font-size="11" text-anchor="middle">Verified</text>
-        </svg>
-    `);
-});
-
-// Import AaaS for secure anchoring
-import { AaaS } from './blockchain/AaaS';
-const aaas = new AaaS();
-
-// Secured Anchor Endpoint (requires Ed25519 authentication)
 app.post('/anchor', async (req, res) => {
     const { poeHash, agentId, agentSignature, agentPublicKey } = req.body;
 
@@ -153,6 +174,7 @@ app.post('/anchor', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`[PDP] Demo server running on port ${PORT}`);
+    console.log(`[PDP] Sovereign Node running on port ${PORT}`);
     console.log(`[PDP] Node ID: ${NODE_ID}`);
 });
+

@@ -35,6 +35,9 @@ message PoEBeacon {
   
   // Ed25519 signature over the serialized fields 1-9 (64 bytes)
   bytes signature = 10;
+
+  // VERA-compliant JCS-canonicalized JSON payload (for Phase 2+)
+  bytes vera_payload = 11;
 }
 
 // AnchorProof: On-chain verification result

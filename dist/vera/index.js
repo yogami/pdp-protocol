@@ -1,0 +1,16 @@
+"use strict";
+/**
+ * VERA Module Index — pdp-protocol
+ *
+ * Exports all VERA types, services, and utilities for the
+ * Verifiable Enforcement for Runtime Agents protocol.
+ *
+ * @see VERA Paper — Berlin AI Labs (2026)
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NonceError = exports.NonceManager = void 0;
+// Services
+var NonceManager_1 = require("./NonceManager");
+Object.defineProperty(exports, "NonceManager", { enumerable: true, get: function () { return NonceManager_1.NonceManager; } });
+Object.defineProperty(exports, "NonceError", { enumerable: true, get: function () { return NonceManager_1.NonceError; } });
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi9zcmMvdmVyYS9pbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiO0FBQUE7Ozs7Ozs7R0FPRzs7O0FBd0JILFdBQVc7QUFDWCwrQ0FBMEQ7QUFBakQsNEdBQUEsWUFBWSxPQUFBO0FBQUUsMEdBQUEsVUFBVSxPQUFBIiwic291cmNlc0NvbnRlbnQiOlsiLyoqXG4gKiBWRVJBIE1vZHVsZSBJbmRleCDigJQgcGRwLXByb3RvY29sXG4gKiBcbiAqIEV4cG9ydHMgYWxsIFZFUkEgdHlwZXMsIHNlcnZpY2VzLCBhbmQgdXRpbGl0aWVzIGZvciB0aGVcbiAqIFZlcmlmaWFibGUgRW5mb3JjZW1lbnQgZm9yIFJ1bnRpbWUgQWdlbnRzIHByb3RvY29sLlxuICogXG4gKiBAc2VlIFZFUkEgUGFwZXIg4oCUIEJlcmxpbiBBSSBMYWJzICgyMDI2KVxuICovXG5cbi8vIFR5cGVzXG5leHBvcnQgdHlwZSB7XG4gICAgSVNPODYwMSxcbiAgICBTaWduYXR1cmVBbGdvcml0aG0sXG4gICAgU2lnbmVyVHlwZSxcbiAgICBBbmNob3JCYWNrZW5kLFxuICAgIFJlY2VpcHRBc3N1cmFuY2UsXG4gICAgVHJ1c3RUaWVyLFxuICAgIEFuY2hvclJlY29yZCxcbiAgICBQcm9vZk9mRXhlY3V0aW9uLFxuICAgIFRvb2xFeGVjdXRpb25SZWNlaXB0LFxuICAgIE5vbmNlUmVjb3JkLFxuICAgIFBEUERlY2lzaW9uVG9rZW4sXG4gICAgUG9FQ2hhaW5WZXJpZmljYXRpb25SZXN1bHQsXG4gICAgQWdlbnRQdXJwb3NlLFxuICAgIFZlcmFBZ2VudElkZW50aXR5LFxuICAgIFNpZ25lZENhcGFiaWxpdHlNYW5pZmVzdCxcbiAgICBUb29sQ2FwYWJpbGl0eSxcbiAgICBEYXRhU2NvcGUsXG4gICAgTmV0d29ya1Njb3BlLFxufSBmcm9tICcuL3R5cGVzJztcblxuLy8gU2VydmljZXNcbmV4cG9ydCB7IE5vbmNlTWFuYWdlciwgTm9uY2VFcnJvciB9IGZyb20gJy4vTm9uY2VNYW5hZ2VyJztcbiJdfQ==

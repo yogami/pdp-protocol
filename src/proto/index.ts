@@ -15,6 +15,7 @@ export interface PoEBeaconProto {
     timestamp: number;
     nonce: number;
     signature: Uint8Array;
+    veraPayload?: Uint8Array;
 }
 
 /**

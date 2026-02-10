@@ -25,6 +25,8 @@ export declare class GossipNode {
     start(): Promise<void>;
     /**
      * Verify the Ed25519 signature over the beacon payload.
+     * VERA Upgrade: If veraPayload is present, verify matches that (JCS JSON).
+     * Otherwise, verify matches the Protobuf encoding (Legacy).
      */
     private verifyBeaconSignature;
     broadcast(beacon: PoEBeaconProto): Promise<void>;

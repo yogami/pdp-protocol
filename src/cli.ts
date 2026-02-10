@@ -56,9 +56,11 @@ async function main() {
             console.log(`\n🛠️ Executing Task: ${task.id}...`);
             await new Promise(r => setTimeout(r, 2000));
 
-            const beacon = await node.testify(task.id, task.data, task.caps);
+            // Action ID, Task ID, Data, Capabilities
+            const beacon = await node.testify(task.id, task.id, task.data, task.caps);
             console.log('✅ Proof broadcasted and anchored.');
-            console.log(`🔗 Explorer: ${beacon.solanaTx ? `https://explorer.solana.com/tx/${beacon.solanaTx}?cluster=devnet` : 'N/A'}`);
+            const tx = beacon.anchor?.anchorId;
+            console.log(`🔗 Explorer: ${tx ? `https://explorer.solana.com/tx/${tx}?cluster=devnet` : 'N/A'}`);
 
             await new Promise(r => setTimeout(r, 6000)); // Wait past rate limit
         }

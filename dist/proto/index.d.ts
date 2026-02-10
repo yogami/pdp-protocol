@@ -9,6 +9,7 @@ export interface PoEBeaconProto {
     timestamp: number;
     nonce: number;
     signature: Uint8Array;
+    veraPayload?: Uint8Array;
 }
 /**
  * Initialize the Protobuf schema by loading the .proto file.

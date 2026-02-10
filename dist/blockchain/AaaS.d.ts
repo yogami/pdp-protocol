@@ -1,15 +1,27 @@
 import { AnchorResult } from './SolanaAdapter';
+export interface AuthenticatedRequest {
+    poeHash: string;
+    agentId: string;
+    agentSignature: string;
+    agentPublicKey: string;
+}
 /**
- * Anchor-as-a-Service (AaaS)
- * Provides a managed interface for anchoring PoE claims to the blockchain.
+ * Anchor-as-a-Service (AaaS) - Hardened Version
+ * - In-Memory Persistence (Protects against replay within session)
+ * - Agent Authentication (Prevents spoofing)
+ * - HMAC Commitments (Prevents tampering)
  */
 export declare class AaaS {
     private solana;
+    private agentStateMap;
     constructor();
+    private getAgentState;
+    private saveAgentState;
+    private verifyAuthorization;
     /**
-     * managedAnchor - Anchors a hash with managed retries and fee handling.
+     * managedAnchor - Anchors a hash with managed retries, fee handling, and ORDERING protection.
      */
-    managedAnchor(poeHash: string, agentId: string): Promise<AnchorResult>;
+    managedAnchor(req: AuthenticatedRequest): Promise<AnchorResult>;
     /**
      * verifyManagedAnchor - Verifies a managed anchor.
      */
