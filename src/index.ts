@@ -4,7 +4,7 @@
  */
 
 export * from './SovereignNode';
-export * from './discovery/GossipNode';
+export { GossipNode, PDP_TOPICS, type PoEBeacon } from './discovery/GossipNode';
 export * from './blockchain/SolanaAdapter';
 export * from './blockchain/BaseAdapter';
 export * from './zk/ZKProofGenerator';
